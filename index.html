@@ -1,303 +1,196 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ODT Generator – mehrere Bilder im Dokument</title>
+<title>BauApp Übersicht</title>
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0078ff" />
-
+<meta name="theme-color" content="#ffffff" />
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
 }
 </script>
-
-<!-- Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
 <style>
 :root {
-  --primary: #0078ff;
-  --primary-dark: #005fd4;
-  --bg: #f5f7fa;
-  --card-bg: #ffffff;
+  --md-surface: #f7f7f7;
+  --md-primary: #1565c0;
+  --md-primary-container: #e3f2fd;
+  --md-outline: #d0d0d0;
   --radius: 12px;
-  --shadow: 0 2px 6px rgba(0,0,0,0.1);
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 body {
-  font-family: system-ui, sans-serif;
-  background: var(--bg);
-  color: #222;
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
+  font-family: 'Roboto', system-ui, sans-serif;
+  background: var(--md-surface);
+  color: #1e1e1e;
 }
 
-header {
-  background: var(--primary);
-  color: white;
-  width: 100%;
-  padding: 1rem;
-  text-align: center;
-  font-size: 1.25rem;
-  font-weight: 600;
+/* Header / AppBar */
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  padding: 0.75rem 1rem;
   box-shadow: var(--shadow);
   position: sticky;
   top: 0;
   z-index: 10;
 }
-
-main {
-  width: 100%;
-  max-width: 900px;
-  padding: 1rem;
-  box-sizing: border-box;
-}
-
-fieldset {
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  border: 1px solid #ccc;
-  padding: 1rem;
-  margin: 1rem 0;
-  box-shadow: var(--shadow);
-}
-
-legend {
-  font-weight: 600;
-  color: var(--primary-dark);
-}
-
-label {
-  display: block;
-  margin: 0.5rem 0 0.25rem;
-  font-size: 0.95rem;
-}
-
-input[type="text"],
-input[type="file"] {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.6rem;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-button {
-  display: block;
-  width: 100%;
-  padding: 0.8rem;
-  background: var(--primary);
-  color: white;
-  font-size: 1.1rem;
+.appbar h1 {
+  margin: 0;
+  font-size: 1.15rem;
   font-weight: 500;
+}
+.icon-btn {
+  background: none;
   border: none;
-  border-radius: 8px;
+  color: #333;
+  font-size: 1.4rem;
   cursor: pointer;
+  padding: 0.25rem;
+}
+
+/* Main content */
+main {
+  padding: 1rem;
+  max-width: 600px;
+  margin: auto;
+}
+
+/* Section headline */
+h2 {
+  font-size: 1rem;
+  color: #555;
+  margin: 1rem 0 0.5rem;
+}
+
+/* Material textfield look */
+.field {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.8rem;
   box-shadow: var(--shadow);
-  transition: background 0.2s ease-in-out;
+}
+.field input {
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: transparent;
+  width: 100%;
+}
+.field label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 2px;
 }
 
-button:hover,
-button:active {
-  background: var(--primary-dark);
+/* Floating action button */
+.fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  background: var(--md-primary);
+  color: white;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  cursor: pointer;
 }
+.fab:active { transform: scale(0.96); }
 
+/* Preview grid */
 #imagePreview {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(90px,1fr));
+  gap: 8px;
+  margin-top: 1rem;
 }
-
 .preview {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1/1;
   object-fit: cover;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: var(--shadow);
-}
-
-/* Responsive tweaks */
-@media (max-width: 600px) {
-  header {
-    font-size: 1.1rem;
-    padding: 0.75rem;
-  }
-
-  fieldset {
-    padding: 0.75rem;
-  }
-
-  input, button {
-    font-size: 1rem;
-  }
 }
 </style>
 </head>
-
 <body>
-<header>📄 ODT Generator</header>
+
+<!-- App bar -->
+<div class="appbar">
+  <button class="icon-btn">☰</button>
+  <h1>BauApp Übersicht</h1>
+  <div>
+    <button class="icon-btn">⭳</button>
+    <button class="icon-btn">⭱</button>
+  </div>
+</div>
+
 <main>
+  <h2>Eingabefelder aus Vorlage:</h2>
+  <div class="field"><label>Projektname</label><input id="var-Projektname" type="text"></div>
+  <div class="field"><label>Bauherr Firma</label><input id="var-Bauherr_Firma" type="text"></div>
+  <div class="field"><label>Bauherr Adresse</label><input id="var-Bauherr_Adresse" type="text"></div>
+  <div class="field"><label>Bauort</label><input id="var-Bauort" type="text"></div>
+  <div class="field"><label>Baubeginn</label><input id="var-Baubeginn" type="text"></div>
+  <div class="field"><label>Ausführende Firma</label><input id="var-Ausfuehrende_Firma" type="text"></div>
+  <div class="field"><label>Datum / Uhrzeit</label><input id="var-Datum_Uhrzeit" type="text"></div>
+  <div class="field"><label>Wetterverhältnisse</label><input id="var-Wetter" type="text"></div>
+  <div class="field"><label>Baufortschritt</label><input id="var-Baufortschritt" type="text"></div>
 
-  <!-- ODT Vorlage -->
-  <fieldset>
-    <legend>Vorlage laden</legend>
-    <input type="file" id="odtInput" accept=".odt" />
-  </fieldset>
-
-  <!-- Variablen -->
-  <div id="vars"></div>
-
-  <!-- Bilder -->
-  <fieldset>
-    <legend>Bilder hinzufügen (mehrere möglich)</legend>
-    <input type="file" id="imagesInput" multiple accept="image/*" />
-    <div id="imagePreview"></div>
-  </fieldset>
-
-  <!-- Export -->
-  <button id="exportBtn">📤 Exportieren als ODT</button>
-
+  <!-- Image preview grid -->
+  <div id="imagePreview"></div>
 </main>
 
+<!-- Floating action button -->
+<button class="fab" id="imagesInputBtn">📷</button>
+<input type="file" id="imagesInput" accept="image/*" multiple style="display:none" />
+
 <script>
-let odtZip, contentXml = "", variables = [], images = [];
+const imageInput = document.getElementById("imagesInput");
+const fabBtn = document.getElementById("imagesInputBtn");
+const preview = document.getElementById("imagePreview");
+let images = [];
 
-// 📂 Vorlage laden
-document.getElementById("odtInput").addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  odtZip = await JSZip.loadAsync(await file.arrayBuffer());
-  contentXml = await odtZip.file("content.xml").async("string");
+fabBtn.addEventListener("click", () => imageInput.click());
 
-  // Variablen auslesen
-  variables = [...new Set([...contentXml.matchAll(/\{\{(.*?)\}\}/g)]
-    .map(m => m[1])
-    .filter(v => !v.startsWith("#") && !v.startsWith("/") && !v.startsWith("!")))];
-
-  buildVarInputs();
-});
-
-// Eingabefelder erstellen
-function buildVarInputs() {
-  const varsDiv = document.getElementById("vars");
-  varsDiv.innerHTML = "";
-  if (variables.length === 0) {
-    varsDiv.innerHTML = `<fieldset><legend>Text-Variablen</legend><p>Keine Variablen gefunden.</p></fieldset>`;
-    return;
-  }
-
-  const fs = document.createElement("fieldset");
-  fs.innerHTML = "<legend>Text-Variablen</legend>";
-
-  variables.forEach(v => {
-    const label = document.createElement("label");
-    label.textContent = v + ": ";
-    const input = document.createElement("input");
-    input.type = "text";
-    input.id = "var-" + v;
-    fs.appendChild(label);
-    fs.appendChild(input);
-  });
-
-  varsDiv.appendChild(fs);
-}
-
-// 📸 Mehrere Bilder auswählen + Vorschau
-document.getElementById("imagesInput").addEventListener("change", async e => {
+imageInput.addEventListener("change", async e => {
   const files = [...e.target.files];
-  const preview = document.getElementById("imagePreview");
-
   for (const file of files) {
     const base64 = await toBase64(file);
-    const dims = await getImageSize(base64);
-    const imageData = {
-      name: `${Date.now()}_${file.name}`,
-      data: await file.arrayBuffer(),
-      width: dims.width,
-      height: dims.height
-    };
-    images.push(imageData);
-
-    const img = document.createElement("img");
-    img.src = base64;
-    img.className = "preview";
-    preview.appendChild(img);
+    const imgEl = document.createElement("img");
+    imgEl.src = base64;
+    imgEl.className = "preview";
+    preview.appendChild(imgEl);
   }
-
   e.target.value = "";
 });
 
 function toBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.onerror = rej;
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=reject;
     r.readAsDataURL(file);
   });
 }
-
-function getImageSize(base64) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.width, height: img.height });
-    img.src = base64;
-  });
-}
-
-// 💾 Exportieren
-document.getElementById("exportBtn").addEventListener("click", async () => {
-  if (!odtZip) return alert("Bitte zuerst eine Vorlage laden!");
-
-  let xml = contentXml;
-
-  // Variablen ersetzen
-  variables.forEach(v => {
-    const val = document.getElementById("var-" + v)?.value || "";
-    xml = xml.replace(new RegExp(`\\{\\{${v}\\}\\}`, "g"), val);
-  });
-
-  // Bilder einfügen
-  let imageSection = "";
-  let count = 0;
-  for (const img of images) {
-    const pxToCm = px => px * 0.0264;
-    const maxWcm = 16, maxHcm = 12;
-    let w = pxToCm(img.width), h = pxToCm(img.height);
-    if (w > maxWcm) { const s = maxWcm / w; w = maxWcm; h *= s; }
-    if (h > maxHcm) { const s = maxHcm / h; h = maxHcm; w *= s; }
-
-    const draw = `
-      <text:p text:style-name="Standard" text:align="center">
-        <draw:frame draw:style-name="fr1" draw:name="${img.name}"
-          text:anchor-type="as-char" svg:width="${w.toFixed(2)}cm" svg:height="${h.toFixed(2)}cm">
-          <draw:image xlink:href="Pictures/${img.name}" xlink:type="simple"
-            xlink:show="embed" xlink:actuate="onLoad"/>
-        </draw:frame>
-      </text:p>`;
-
-    imageSection += draw + "\n";
-    count++;
-    if (count % 2 === 0) imageSection += `<text:p text:style-name="Standard"><text:soft-page-break/></text:p>\n`;
-
-    odtZip.file(`Pictures/${img.name}`, img.data);
-  }
-
-  xml = xml.replace(/<\/office:text>/, imageSection + "\n</office:text>");
-  xml = xml.replace(/\{\{[^}]+\}\}/g, "");
-  odtZip.file("content.xml", xml);
-  const blob = await odtZip.generateAsync({ type: "blob" });
-  saveAs(blob, "export.odt");
-});
 </script>
 </body>
 </html>
