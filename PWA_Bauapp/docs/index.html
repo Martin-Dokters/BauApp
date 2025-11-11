@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0078ff">
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
+</script>
+
+<meta charset="UTF-8">
+<title>ODT Generator – mehrere Bilder im Dokument (Fix)</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  background: #f5f7fa;
+  margin: 2rem;
+  color: #222;
+}
+h1 { text-align: center; }
+fieldset {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: white;
+}
+input, button {
+  padding: 6px;
+  font-size: 1rem;
+  margin: 4px 0;
+}
+button {
+  background: #0078ff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover { background: #005fd4; }
+.preview {
+  max-width: 120px;
+  max-height: 120px;
+  object-fit: cover;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin: 4px;
+}
+#imagePreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+</style>
+</head>
+<body>
+<h1>📄 ODT Generator – mehrere Bilder im Dokument</h1>
+
+<!-- ODT Vorlage -->
+<input type="file" id="odtInput" accept=".odt"><br><br>
+<div id="vars"></div>
+
+<!-- Bilder -->
+<h2>Bilder hinzufügen (mehrere möglich)</h2>
+<input type="file" id="imagesInput" multiple accept="image/*"><br><br>
+<div id="imagePreview"></div>
+
+<!-- Export -->
+<button id="exportBtn">📤 Exportieren als ODT</button>
+
+<script>
+let odtZip, contentXml = "", variables = [], images = [];
+
+// 📂 Vorlage laden
+document.getElementById("odtInput").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  odtZip = await JSZip.loadAsync(await file.arrayBuffer());
+  contentXml = await odtZip.file("content.xml").async("string");
+
+  // Variablen auslesen
+  variables = [...new Set([...contentXml.matchAll(/\{\{(.*?)\}\}/g)]
+    .map(m => m[1])
+    .filter(v => !v.startsWith("#") && !v.startsWith("/") && !v.startsWith("!")))];
+  buildVarInputs();
+});
+
+// Eingabefelder für Variablen
+function buildVarInputs() {
+  const varsDiv = document.getElementById("vars");
+  varsDiv.innerHTML = "";
+  if (variables.length === 0) {
+    varsDiv.textContent = "Keine Variablen gefunden.";
+    return;
+  }
+  const fs = document.createElement("fieldset");
+  fs.innerHTML = "<legend>Text-Variablen</legend>";
+  variables.forEach(v => {
+    const label = document.createElement("label");
+    label.textContent = v + ": ";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = "var-" + v;
+    label.appendChild(input);
+    fs.appendChild(label);
+    fs.appendChild(document.createElement("br"));
+  });
+  varsDiv.appendChild(fs);
+}
+
+// 📸 Mehrere Bilder auswählen + anhängen
+document.getElementById("imagesInput").addEventListener("change", async e => {
+  const files = [...e.target.files];
+  const preview = document.getElementById("imagePreview");
+
+  for (const file of files) {
+    const base64 = await toBase64(file);
+    const dims = await getImageSize(base64);
+    const imageData = {
+      name: `${Date.now()}_${file.name}`,
+      data: await file.arrayBuffer(),
+      width: dims.width,
+      height: dims.height
+    };
+    images.push(imageData);
+
+    // Vorschau anhängen (nicht ersetzen)
+    const img = document.createElement("img");
+    img.src = base64;
+    img.className = "preview";
+    preview.appendChild(img);
+  }
+
+  // ermöglicht, dass man nochmal dieselben Dateien wählen kann
+  e.target.value = "";
+});
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function getImageSize(base64) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.src = base64;
+  });
+}
+
+// 💾 Exportieren
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  if (!odtZip) return alert("Bitte zuerst eine Vorlage laden!");
+
+  let xml = contentXml;
+
+  // 🔹 Textvariablen ersetzen
+  variables.forEach(v => {
+    const val = document.getElementById("var-" + v)?.value || "";
+    xml = xml.replace(new RegExp(`\\{\\{${v}\\}\\}`, "g"), val);
+  });
+
+  // 🔹 Bilder einfügen (alle sichtbar untereinander)
+  let imageSection = "";
+  let count = 0;
+
+  for (const img of images) {
+    const pxToCm = px => px * 0.0264;
+    const maxWcm = 16, maxHcm = 12;
+    let w = pxToCm(img.width), h = pxToCm(img.height);
+    if (w > maxWcm) { const s = maxWcm / w; w = maxWcm; h *= s; }
+    if (h > maxHcm) { const s = maxHcm / h; h = maxHcm; w *= s; }
+
+    const draw = `
+      <text:p text:style-name="Standard" text:align="center">
+        <draw:frame draw:style-name="fr1" draw:name="${img.name}"
+          text:anchor-type="as-char" svg:width="${w.toFixed(2)}cm" svg:height="${h.toFixed(2)}cm">
+          <draw:image xlink:href="Pictures/${img.name}" xlink:type="simple"
+            xlink:show="embed" xlink:actuate="onLoad"/>
+        </draw:frame>
+      </text:p>`;
+
+    imageSection += draw + "\n";
+    count++;
+    // Nach jedem 2. Bild Seitenumbruch
+    if (count % 2 === 0) {
+      imageSection += `<text:p text:style-name="Standard"><text:soft-page-break/></text:p>\n`;
+    }
+
+    odtZip.file(`Pictures/${img.name}`, img.data);
+  }
+
+  // 🔹 Bilder unten in content.xml einfügen
+  xml = xml.replace(/<\/office:text>/, imageSection + "\n</office:text>");
+  xml = xml.replace(/\{\{[^}]+\}\}/g, "");
+
+  odtZip.file("content.xml", xml);
+  const blob = await odtZip.generateAsync({ type: "blob" });
+  saveAs(blob, "export.odt");
+});
+</script>
+</body>
+</html>
