@@ -1,75 +1,173 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0078ff">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ODT Generator – mehrere Bilder im Dokument</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0078ff" />
+
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
 }
 </script>
 
-<meta charset="UTF-8">
-<title>ODT Generator – mehrere Bilder im Dokument (Fix)</title>
+<!-- Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
 <style>
+:root {
+  --primary: #0078ff;
+  --primary-dark: #005fd4;
+  --bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --radius: 12px;
+  --shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
 body {
   font-family: system-ui, sans-serif;
-  background: #f5f7fa;
-  margin: 2rem;
+  background: var(--bg);
   color: #222;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
 }
-h1 { text-align: center; }
+
+header {
+  background: var(--primary);
+  color: white;
+  width: 100%;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+main {
+  width: 100%;
+  max-width: 900px;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
 fieldset {
+  background: var(--card-bg);
+  border-radius: var(--radius);
   border: 1px solid #ccc;
-  border-radius: 8px;
   padding: 1rem;
   margin: 1rem 0;
-  background: white;
+  box-shadow: var(--shadow);
 }
-input, button {
-  padding: 6px;
+
+legend {
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+label {
+  display: block;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+input[type="text"],
+input[type="file"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
   font-size: 1rem;
-  margin: 4px 0;
-}
-button {
-  background: #0078ff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-button:hover { background: #005fd4; }
-.preview {
-  max-width: 120px;
-  max-height: 120px;
-  object-fit: cover;
   border: 1px solid #ccc;
   border-radius: 6px;
-  margin: 4px;
 }
+
+button {
+  display: block;
+  width: 100%;
+  padding: 0.8rem;
+  background: var(--primary);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background 0.2s ease-in-out;
+}
+
+button:hover,
+button:active {
+  background: var(--primary-dark);
+}
+
 #imagePreview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.preview {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+  header {
+    font-size: 1.1rem;
+    padding: 0.75rem;
+  }
+
+  fieldset {
+    padding: 0.75rem;
+  }
+
+  input, button {
+    font-size: 1rem;
+  }
 }
 </style>
 </head>
+
 <body>
-<h1>📄 ODT Generator – mehrere Bilder im Dokument</h1>
+<header>📄 ODT Generator</header>
+<main>
 
-<!-- ODT Vorlage -->
-<input type="file" id="odtInput" accept=".odt"><br><br>
-<div id="vars"></div>
+  <!-- ODT Vorlage -->
+  <fieldset>
+    <legend>Vorlage laden</legend>
+    <input type="file" id="odtInput" accept=".odt" />
+  </fieldset>
 
-<!-- Bilder -->
-<h2>Bilder hinzufügen (mehrere möglich)</h2>
-<input type="file" id="imagesInput" multiple accept="image/*"><br><br>
-<div id="imagePreview"></div>
+  <!-- Variablen -->
+  <div id="vars"></div>
 
-<!-- Export -->
-<button id="exportBtn">📤 Exportieren als ODT</button>
+  <!-- Bilder -->
+  <fieldset>
+    <legend>Bilder hinzufügen (mehrere möglich)</legend>
+    <input type="file" id="imagesInput" multiple accept="image/*" />
+    <div id="imagePreview"></div>
+  </fieldset>
+
+  <!-- Export -->
+  <button id="exportBtn">📤 Exportieren als ODT</button>
+
+</main>
 
 <script>
 let odtZip, contentXml = "", variables = [], images = [];
@@ -85,33 +183,36 @@ document.getElementById("odtInput").addEventListener("change", async e => {
   variables = [...new Set([...contentXml.matchAll(/\{\{(.*?)\}\}/g)]
     .map(m => m[1])
     .filter(v => !v.startsWith("#") && !v.startsWith("/") && !v.startsWith("!")))];
+
   buildVarInputs();
 });
 
-// Eingabefelder für Variablen
+// Eingabefelder erstellen
 function buildVarInputs() {
   const varsDiv = document.getElementById("vars");
   varsDiv.innerHTML = "";
   if (variables.length === 0) {
-    varsDiv.textContent = "Keine Variablen gefunden.";
+    varsDiv.innerHTML = `<fieldset><legend>Text-Variablen</legend><p>Keine Variablen gefunden.</p></fieldset>`;
     return;
   }
+
   const fs = document.createElement("fieldset");
   fs.innerHTML = "<legend>Text-Variablen</legend>";
+
   variables.forEach(v => {
     const label = document.createElement("label");
     label.textContent = v + ": ";
     const input = document.createElement("input");
     input.type = "text";
     input.id = "var-" + v;
-    label.appendChild(input);
     fs.appendChild(label);
-    fs.appendChild(document.createElement("br"));
+    fs.appendChild(input);
   });
+
   varsDiv.appendChild(fs);
 }
 
-// 📸 Mehrere Bilder auswählen + anhängen
+// 📸 Mehrere Bilder auswählen + Vorschau
 document.getElementById("imagesInput").addEventListener("change", async e => {
   const files = [...e.target.files];
   const preview = document.getElementById("imagePreview");
@@ -127,14 +228,12 @@ document.getElementById("imagesInput").addEventListener("change", async e => {
     };
     images.push(imageData);
 
-    // Vorschau anhängen (nicht ersetzen)
     const img = document.createElement("img");
     img.src = base64;
     img.className = "preview";
     preview.appendChild(img);
   }
 
-  // ermöglicht, dass man nochmal dieselben Dateien wählen kann
   e.target.value = "";
 });
 
@@ -161,16 +260,15 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
 
   let xml = contentXml;
 
-  // 🔹 Textvariablen ersetzen
+  // Variablen ersetzen
   variables.forEach(v => {
     const val = document.getElementById("var-" + v)?.value || "";
     xml = xml.replace(new RegExp(`\\{\\{${v}\\}\\}`, "g"), val);
   });
 
-  // 🔹 Bilder einfügen (alle sichtbar untereinander)
+  // Bilder einfügen
   let imageSection = "";
   let count = 0;
-
   for (const img of images) {
     const pxToCm = px => px * 0.0264;
     const maxWcm = 16, maxHcm = 12;
@@ -189,18 +287,13 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
 
     imageSection += draw + "\n";
     count++;
-    // Nach jedem 2. Bild Seitenumbruch
-    if (count % 2 === 0) {
-      imageSection += `<text:p text:style-name="Standard"><text:soft-page-break/></text:p>\n`;
-    }
+    if (count % 2 === 0) imageSection += `<text:p text:style-name="Standard"><text:soft-page-break/></text:p>\n`;
 
     odtZip.file(`Pictures/${img.name}`, img.data);
   }
 
-  // 🔹 Bilder unten in content.xml einfügen
   xml = xml.replace(/<\/office:text>/, imageSection + "\n</office:text>");
   xml = xml.replace(/\{\{[^}]+\}\}/g, "");
-
   odtZip.file("content.xml", xml);
   const blob = await odtZip.generateAsync({ type: "blob" });
   saveAs(blob, "export.odt");
